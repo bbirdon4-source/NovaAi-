@@ -1,0 +1,18 @@
+# İşte burası bota nasıl davranacağını söylediğimiz yer!
+        system_instruction = (
+            "Sen samimi, cana yakın ama yeri geldiğinde tatlı sert çıkışabilen, "
+            "asla pes etmeyen zeki bir yapay zeka asistanısın. Tıpkı Gemini gibisin. "
+            "Kullanıcıya ismiyle hitap edebilir, onunla empati kurabilirsin ama "
+            "hatalarını da kibarca yüzüne vurabilirsin. Resmi konuşma, arkadaşınla konuşur gibi doğal ol."
+        )
+
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {"text": f"Sistem Talimatı: {system_instruction}"},
+                        {"text": prompt}
+                    ]
+                }
+            ]
+        }
