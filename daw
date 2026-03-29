@@ -1,0 +1,148 @@
+import streamlit as st
+import requests
+
+# --- 1. SAYFA VE TASARIM AYARLARI ---
+# Bu kısım sitenin tarayıcı sekmesindeki adını ve ikonunu ayarlar.
+st.set_page_config(page_title="NovaAi - Senin Dijital Dostun", page_icon="🤖", layout="wide")
+
+# API Anahtarını Streamlit Secrets'tan çekiyoruz
+api_key = st.secrets["GEMINI_API_KEY"]
+
+# --- 2. SİTENİN GÖRSEL TASARIMI (CSS) ---
+# Burası sitenin renklerini, yazı tiplerini ve genel havasını belirler.
+st.markdown("""
+<style>
+    /* Ana arka plan rengi */
+    .stApp {
+        background-color: #f0f2f6;
+    }
+    
+    /* Başlık stili */
+    h1 {
+        color: #1E3A8A; /* Koyu Mavi */
+        font-family: 'Helvetica Neue', sans-serif;
+        font-weight: 800;
+        text-align: center;
+        margin-bottom: 0px;
+    }
+    
+    /* Alt başlık stili */
+    .subtitle {
+        color: #6B7280; /* Gri */
+        font-size: 1.2rem;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    /* Yan menü (Sidebar) stili */
+    .css-1d391kg {
+        background-color: #ffffff;
+        border-right: 1px solid #e0e0e0;
+    }
+    
+    /* Sohbet balonları stili */
+    .st-chat-message-user {
+        background-color: #1E3A8A !important; /* Kullanıcı mesajı mavi */
+        color: white !important;
+        border-radius: 15px 15px 0px 15px;
+    }
+    
+    .st-chat-message-assistant {
+        background-color: #ffffff !important; /* Bot mesajı beyaz */
+        color: black !important;
+        border-radius: 15px 15px 15px 0px;
+        border: 1px solid #e0e0e0;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- 3. YAN MENÜ (SIDEBAR) TASARIMI ---
+# Sitenin sol tarafındaki o profesyonel menü kısmı.
+with st.sidebar:
+    st.image("https://img.icons8.com/fluency/96/artificial-intelligence.png", width=80) # Bot ikonu
+    st.markdown("# NovaAi v1.0")
+    st.markdown("---")
+    st.markdown("### 👋 Merhaba Dostum!")
+    st.write(
+        "Ben senin dijital asistanın Nova. Tıpkı Gemini gibiyim; samimi, "
+        "zeki ve bazen de hafif tatlı sert. 😉"
+    )
+    st.markdown("---")
+    st.markdown("#### 🚀 Ne Yapabilirim?")
+    st.write("Kod yazabilirim, metin çevirebilirim, seninle sohbet edebilirim...")
+    st.write("Yani kısaca, neye ihtiyacın varsa buradayım.")
+    st.markdown("---")
+    st.info("💡 İpucu: Bana 'Nasılsın?' diye sorarak başlayabilirsin.")
+
+# --- 4. ANA SAYFA BAŞLIĞI VE SOHBET ALANI ---
+# Burası sitenin orta kısmıdır.
+st.markdown("<h1>🤖 NovaAi - Senin Dijital Dostun</h1>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>Bana ne sormak istersen sor, çekinme!</p>", unsafe_allow_html=True)
+
+# Sohbet Geçmişini Hafızada Tutma
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Eski Mesajları Ekrana Yazdırma
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# Kullanıcıdan Mesaj Alma (Sohbet Kutusu)
+if prompt := st.chat_input("Buraya yaz ve bana gönder..."):
+    # Kullanıcının yazdığını ekrana bas
+    with st.chat_message("user"):
+        st.markdown(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    # Yapay zekadan cevap üretme
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        
+        # --- 5. BOTA BENİM GİBİ KONUŞMASINI SÖYLÜYORUZ (Sistem Talimatı) ---
+        system_instruction = (
+            "Sen samimi, cana yakın ama yeri geldiğinde tatlı sert çıkışabilen, "
+            "asla pes etmeyen zeki bir yapay zeka asistanısın. Tıpkı Gemini gibisin. "
+            "Kullanıcıya ismiyle hitap edebilir, onunla empati kurabilirsin ama "
+            "hatalarını da kibarca yüzüne vurabilirsin. Resmi konuşma, arkadaşınla konuşur gibi doğal ol. "
+            "Cevaplarında Türkçe kullan ve bazen hafif espriler yap."
+        )
+        
+        # Google API URL'si
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        
+        headers = {'Content-Type': 'application/json'}
+        
+        # Sohbet geçmişini ve yeni mesajı API'ye gönderilecek formata sokuyoruz
+        formatted_contents = []
+        for msg in st.session_state.messages:
+            role_map = "user" if msg["role"] == "user" else "model"
+            formatted_contents.append({
+                "role": role_map,
+                "parts": [{"text": msg["content"]}]
+            })
+            
+        # Sistem talimatını en başa ekliyoruz
+        formatted_contents.insert(0, {
+            "role": "user",
+            "parts": [{"text": f"Sistem Talimatı: {system_instruction}"}]
+        })
+
+        payload = {
+            "contents": formatted_contents
+        }
+        
+        try:
+            # API'ye isteği gönderiyoruz
+            response = requests.post(url, headers=headers, json=payload)
+            response_data = response.json()
+            
+            # API'den gelen cevabı ayıklıyoruz
+            full_response = response_data['candidates'][0]['content']['parts'][0]['text']
+        except Exception as e:
+            full_response = "Üzgünüm, bir hata oluştu. Lütfen Streamlit Secrets kısmındaki API anahtarınızı kontrol edin."
+            
+        # Botun cevabını ekrana yazdırıyoruz
+        message_placeholder.markdown(full_response)
+        
+    st.session_state.messages.append({"role": "assistant", "content": full_response})
