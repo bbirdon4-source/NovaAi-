@@ -1,0 +1,48 @@
+import streamlit as st
+import google.generativeai as genai
+
+# 1. API Anahtarını Streamlit Secrets'tan çekiyoruz
+genai.configure(api_key=st.secrets["AIzaSyA1yeToqVWY1zCrbJireIpvxP0rua0YDCM"])
+
+st.set_page_config(page_title="Resmi Gemini Bot", page_icon="🤖")
+st.title("🤖 NovaAi Chatbot (Resmi Sürüm)")
+
+# 2. Sohbet Geçmişini Hafızada Tutma
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# 3. Eski Mesajları Ekrana Yazdırma
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# 4. Kullanıcıdan Mesaj Alma
+if prompt := st.chat_input("Mesajınızı buraya yazın..."):
+    with st.chat_message("user"):
+        st.markdown(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    # 5. Yapay Zekadan Cevap Üretme
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        
+        # Bota karakterini yüklüyoruz
+        system_instruction = (
+            "Sen samimi, cana yakın ama yeri geldiğinde tatlı sert çıkışabilen, "
+            "asla pes etmeyen zeki bir yapay zeka asistanısın. Tıpkı Gemini gibisin. "
+            "Resmi konuşma, arkadaşınla konuşur gibi doğal ol."
+        )
+        
+        # Modeli başlatıyoruz
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            system_instruction=system_instruction
+        )
+        
+        # Cevap üretiyoruz
+        response = model.generate_content(prompt)
+        full_response = response.text
+        
+        message_placeholder.markdown(full_response)
+        
+    st.session_state.messages.append({"role": "assistant", "content": full_response})
